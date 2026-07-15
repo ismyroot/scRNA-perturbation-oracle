@@ -41,9 +41,10 @@ CellOracle 安装在独立 conda 环境 `celloracle_env`（Python 3.12，基于 
 | G | matplotlib-base / seaborn-base（无 Qt6） |
 | H | python-igraph / umap-learn |
 | I | anndata / scanpy |
-| J | pip celloracle --no-deps |
-| K | R zellkonverter |
-| L | 导入 + Base GRN 加载验证 |
+| J | pip velocyto（celloracle 导入依赖） |
+| K | pip celloracle --no-deps |
+| L | R zellkonverter |
+| M | 导入 + Base GRN 加载验证 |
 
 ## 主要 Python 包
 

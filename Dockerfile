@@ -87,11 +87,15 @@ RUN ${CONDA_DIR}/bin/mamba install -n ${CELLORACLE_ENV} -c conda-forge \
       anndata \
       scanpy
 
-# Step J：celloracle wheel
+# Step J：velocyto（celloracle __init__.py 硬依赖；--no-build-isolation 复用已装 cython/numpy）
+RUN ${CONDA_DIR}/bin/mamba run -n ${CELLORACLE_ENV} pip install --no-cache-dir --no-build-isolation \
+      "velocyto>=0.17"
+
+# Step K：celloracle wheel
 RUN ${CONDA_DIR}/bin/mamba run -n ${CELLORACLE_ENV} pip install --no-cache-dir --no-build-isolation --no-deps \
       "celloracle==0.18.0"
 
-# Step K：R 侧 RDS → h5ad
+# Step L：R 侧 RDS → h5ad
 RUN R -e "nc <- suppressWarnings(as.integer(Sys.getenv('R_INSTALL_NCPUS', '4'))); \
   if (requireNamespace('BiocManager', quietly=TRUE)) { \
     BiocManager::install('zellkonverter', ask=FALSE, update=FALSE, Ncpus=nc); \
@@ -100,7 +104,7 @@ RUN R -e "nc <- suppressWarnings(as.integer(Sys.getenv('R_INSTALL_NCPUS', '4')))
     BiocManager::install('zellkonverter', ask=FALSE, update=FALSE, Ncpus=nc); \
   }"
 
-# Step L：验收
+# Step M：验收
 RUN ${CONDA_DIR}/envs/${CELLORACLE_ENV}/bin/python3 -c "\
 import celloracle as co; \
 import scanpy; \
