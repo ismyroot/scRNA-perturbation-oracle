@@ -20,7 +20,8 @@ CellOracle 虚拟敲除 / 过表达 Galaxy 工具专用镜像（Phase 2）。
 
 CellOracle 安装在独立 conda 环境 `celloracle_env`（Python 3.12，基于 **Miniforge**）：
 
-- **不安装 gimmemotifs**：Galaxy 工具只用内置 Base GRN，不做 motif 扫描；gimmemotifs 依赖极重（meme/mysql/perl 等），是此前 Step 19 超时的主因
+- **不安装 gimmemotifs 的 pip 源码包**；改用 bioconda 预编译 `gimmemotifs`（celloracle 导入必需，单独 RUN 层）
+- 另装 `genomepy`（conda-forge）、`goatools` / `velocyto`（pip）
 - 使用 Miniforge 而非 Miniconda，避免 Docker 非交互构建时 `CondaToSNonInteractiveError`
 - **Dockerfile 拆分为多个 RUN 层**，平台超时重试时可复用已完成层
 - 使用 `mamba` 加速依赖求解与安装
@@ -41,10 +42,13 @@ CellOracle 安装在独立 conda 环境 `celloracle_env`（Python 3.12，基于 
 | G | matplotlib-base / seaborn-base（无 Qt6） |
 | H | python-igraph / umap-learn |
 | I | anndata / scanpy |
-| J | pip velocyto（celloracle 导入依赖） |
-| K | pip celloracle --no-deps |
-| L | R zellkonverter |
-| M | 导入 + Base GRN 加载验证 |
+| J | gimmemotifs（bioconda，单独一层） |
+| K | genomepy |
+| L | pip goatools |
+| M | pip velocyto |
+| N | pip celloracle --no-deps |
+| O | R zellkonverter |
+| P | 导入 + Base GRN 加载验证 |
 
 ## 主要 Python 包
 

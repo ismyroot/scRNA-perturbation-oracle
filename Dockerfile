@@ -4,9 +4,9 @@
 # 另建 conda 环境 celloracle_env（Python 3.12）安装 CellOracle 栈。
 #
 # 说明：
-# - Galaxy 工具仅使用 CellOracle 内置 Base GRN，不安装 gimmemotifs。
-# - 使用 matplotlib-base（无 Qt6/PySide6），MPLBACKEND=Agg 足够向量场出图。
-# - 每个 mamba install 单独 RUN，便于平台 ~10min 超时重试时复用缓存层。
+# - celloracle 导入链硬依赖 gimmemotifs / genomepy / goatools / velocyto（即使仅用内置 Base GRN）。
+# - gimmemotifs 必须走 bioconda 预编译包（不可 pip 源码）；单独一层便于超时重试缓存。
+# - 每个 mamba/pip 安装单独 RUN，便于平台 ~10min 超时重试时复用缓存层。
 
 ARG INTEROP_IMAGE=quay.io/1733295510/scrna-interop:V2.5.2
 FROM ${INTEROP_IMAGE}
@@ -30,6 +30,7 @@ USER root
 # Step A：系统依赖
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
+    bedtools \
     cmake \
     wget \
     git \
@@ -72,7 +73,7 @@ RUN ${CONDA_DIR}/bin/mamba install -n ${CELLORACLE_ENV} -c conda-forge \
       h5py \
       pyarrow
 
-# Step G：绑图（matplotlib-base 无 Qt，避免 qt6/pyside6 巨包）
+# Step G：绑图（matplotlib-base 无 Qt）
 RUN ${CONDA_DIR}/bin/mamba install -n ${CELLORACLE_ENV} -c conda-forge \
       matplotlib-base \
       seaborn-base
@@ -87,15 +88,27 @@ RUN ${CONDA_DIR}/bin/mamba install -n ${CELLORACLE_ENV} -c conda-forge \
       anndata \
       scanpy
 
-# Step J：velocyto（celloracle __init__.py 硬依赖；--no-build-isolation 复用已装 cython/numpy）
+# Step J：gimmemotifs（celloracle motif_analysis 导入硬依赖；bioconda 单独一层）
+RUN ${CONDA_DIR}/bin/mamba install -n ${CELLORACLE_ENV} -c conda-forge -c bioconda \
+      gimmemotifs
+
+# Step K：genomepy
+RUN ${CONDA_DIR}/bin/mamba install -n ${CELLORACLE_ENV} -c conda-forge \
+      genomepy
+
+# Step L：goatools
+RUN ${CONDA_DIR}/bin/mamba run -n ${CELLORACLE_ENV} pip install --no-cache-dir --no-build-isolation \
+      "goatools"
+
+# Step M：velocyto
 RUN ${CONDA_DIR}/bin/mamba run -n ${CELLORACLE_ENV} pip install --no-cache-dir --no-build-isolation \
       "velocyto>=0.17"
 
-# Step K：celloracle wheel
+# Step N：celloracle wheel
 RUN ${CONDA_DIR}/bin/mamba run -n ${CELLORACLE_ENV} pip install --no-cache-dir --no-build-isolation --no-deps \
       "celloracle==0.18.0"
 
-# Step L：R 侧 RDS → h5ad
+# Step O：R 侧 RDS → h5ad
 RUN R -e "nc <- suppressWarnings(as.integer(Sys.getenv('R_INSTALL_NCPUS', '4'))); \
   if (requireNamespace('BiocManager', quietly=TRUE)) { \
     BiocManager::install('zellkonverter', ask=FALSE, update=FALSE, Ncpus=nc); \
@@ -104,7 +117,7 @@ RUN R -e "nc <- suppressWarnings(as.integer(Sys.getenv('R_INSTALL_NCPUS', '4')))
     BiocManager::install('zellkonverter', ask=FALSE, update=FALSE, Ncpus=nc); \
   }"
 
-# Step M：验收
+# Step P：验收
 RUN ${CONDA_DIR}/envs/${CELLORACLE_ENV}/bin/python3 -c "\
 import celloracle as co; \
 import scanpy; \
