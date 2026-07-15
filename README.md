@@ -18,9 +18,10 @@ CellOracle 虚拟敲除 / 过表达 Galaxy 工具专用镜像（Phase 2）。
 
 ## Python 环境
 
-CellOracle 安装在独立 conda 环境 `celloracle_env`（Python 3.12）：
+CellOracle 安装在独立 conda 环境 `celloracle_env`（Python 3.12，基于 **Miniforge**）：
 
-- `gimmemotifs`、`louvain` 经 **bioconda/conda-forge** 预编译安装（避免 pip 在 Py3.12 下构建失败）
+- 使用 Miniforge 而非 Miniconda，避免 Docker 非交互构建时 `CondaToSNonInteractiveError`
+- `gimmemotifs`、`louvain` 经 **bioconda/conda-forge** 预编译安装
 - `celloracle==0.18.0` 经 `pip install --no-deps` 安装（避免 pip 再次源码编译 gimmemotifs）
 - Quarto 通过 `QUARTO_PYTHON=/opt/miniconda/envs/celloracle_env/bin/python3` 调用该环境
 

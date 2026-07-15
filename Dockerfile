@@ -4,7 +4,7 @@
 # 另建 conda 环境 celloracle_env（Python 3.12）安装 CellOracle 栈。
 #
 # 说明：gimmemotifs 无 PyPI wheel，Python 3.12 下 pip 源码构建会因 versioneer/SafeConfigParser 失败。
-# 参照 CellOracle 官方 CI：conda 预装 gimmemotifs/louvain，celloracle 用 --no-deps 避免 pip 重复拉取 gimmemotifs。
+# 使用 Miniforge（conda-forge/bioconda）而非 Miniconda，避免非交互构建时 Anaconda ToS 报错。
 #
 # 构建示例：
 #   cd /home/ubuntu/zhaoyiran/TOOL-Dockerfile/singlecell/scRNA-perturbation-oracle
@@ -47,13 +47,14 @@ RUN apt-get update \
     libssl-dev \
  && rm -rf /var/lib/apt/lists/*
 
-# 1) Miniconda + 预编译依赖（禁止在此阶段 pip install gimmemotifs/celloracle 到 /opt/venv）
-RUN wget -q https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh \
- && bash /tmp/miniconda.sh -b -p ${CONDA_DIR} \
- && rm /tmp/miniconda.sh \
+# 1) Miniforge（仅 conda-forge，无 Anaconda defaults ToS 问题）+ 预编译依赖
+RUN wget -q https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh -O /tmp/miniforge.sh \
+ && bash /tmp/miniforge.sh -b -p ${CONDA_DIR} \
+ && rm /tmp/miniforge.sh \
  && ${CONDA_DIR}/bin/conda config --set always_yes yes --set changeps1 no \
+ && ${CONDA_DIR}/bin/conda config --set channel_priority flexible \
  && ${CONDA_DIR}/bin/conda create -n ${CELLORACLE_ENV} python=3.12 \
- && ${CONDA_DIR}/bin/conda install -n ${CELLORACLE_ENV} -c bioconda -c conda-forge \
+ && ${CONDA_DIR}/bin/conda install -n ${CELLORACLE_ENV} -c conda-forge -c bioconda \
       gimmemotifs \
       louvain \
       cython \
