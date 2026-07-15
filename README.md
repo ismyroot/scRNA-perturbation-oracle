@@ -20,11 +20,12 @@ CellOracle 虚拟敲除 / 过表达 Galaxy 工具专用镜像（Phase 2）。
 
 CellOracle 安装在独立 conda 环境 `celloracle_env`（Python 3.12，基于 **Miniforge**）：
 
+- **不安装 gimmemotifs**：Galaxy 工具只用内置 Base GRN，不做 motif 扫描；gimmemotifs 依赖极重（meme/mysql/perl 等），是此前 Step 19 超时的主因
 - 使用 Miniforge 而非 Miniconda，避免 Docker 非交互构建时 `CondaToSNonInteractiveError`
-- **Dockerfile 拆分为多个 RUN 层**（Miniforge → 建 env → gimmemotifs → 基础栈 → scanpy → celloracle），平台超时重试时可复用已完成层
+- **Dockerfile 拆分为多个 RUN 层**，平台超时重试时可复用已完成层
 - 使用 `mamba` 加速依赖求解与安装
-- `gimmemotifs`、`louvain` 经 **bioconda/conda-forge** 预编译安装
-- `celloracle==0.18.0` 经 `pip install --no-deps` 安装（避免 pip 再次源码编译 gimmemotifs）
+- `louvain` 经 bioconda 预编译安装
+- `celloracle==0.18.0` 经 `pip install --no-deps` 安装
 - Quarto 通过 `QUARTO_PYTHON=/opt/miniconda/envs/celloracle_env/bin/python3` 调用该环境
 
 ### Dockerfile 分层（便于超时重试）
@@ -34,13 +35,12 @@ CellOracle 安装在独立 conda 环境 `celloracle_env`（Python 3.12，基于 
 | A | apt 系统依赖 |
 | B | Miniforge 安装与 channel 配置 |
 | C | `mamba create` python=3.12 环境 |
-| D | gimmemotifs（bioconda，最耗时） |
-| E | louvain / cython / numpy / numba |
-| F | scipy / pandas / matplotlib 等 |
-| G | scanpy / anndata / umap-learn 等 |
-| H | pip celloracle --no-deps |
-| I | R zellkonverter |
-| J | 导入验证 |
+| D | louvain / cython / numpy / numba |
+| E | scipy / pandas / matplotlib 等 |
+| F | scanpy / anndata / umap-learn 等 |
+| G | pip celloracle --no-deps |
+| H | R zellkonverter |
+| I | 导入 + Base GRN 加载验证 |
 
 ## 主要 Python 包
 
