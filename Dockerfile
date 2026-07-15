@@ -4,10 +4,9 @@
 # 另建 conda 环境 celloracle_env（Python 3.12）安装 CellOracle 栈。
 #
 # 说明：
-# - Galaxy 工具仅使用 CellOracle 内置 Base GRN（load_mouse_scATAC_atlas_base_GRN 等），
-#   不做 motif 扫描，因此 **不安装 gimmemotifs**（该包极大且易触发构建超时）。
-# - celloracle 以 pip --no-deps 安装，避免拉取 gimmemotifs 等 PyPI 源码依赖。
-# - 使用 Miniforge + 多 RUN 分层，便于平台超时重试时复用缓存。
+# - Galaxy 工具仅使用 CellOracle 内置 Base GRN，不安装 gimmemotifs。
+# - 使用 matplotlib-base（无 Qt6/PySide6），MPLBACKEND=Agg 足够向量场出图。
+# - 每个 mamba install 单独 RUN，便于平台 ~10min 超时重试时复用缓存层。
 
 ARG INTEROP_IMAGE=quay.io/1733295510/scrna-interop:V2.5.2
 FROM ${INTEROP_IMAGE}
@@ -53,37 +52,46 @@ RUN wget -q https://github.com/conda-forge/miniforge/releases/latest/download/Mi
 # Step C：Python 环境
 RUN ${CONDA_DIR}/bin/mamba create -n ${CELLORACLE_ENV} python=3.12
 
-# Step D：图算法 / 编译依赖（louvain 走 bioconda 预编译）
+# Step D：图算法 / 编译依赖
 RUN ${CONDA_DIR}/bin/mamba install -n ${CELLORACLE_ENV} -c conda-forge -c bioconda \
       louvain \
       cython \
       numpy \
       numba
 
-# Step E：科学计算基础栈
+# Step E：数值与机器学习基础
 RUN ${CONDA_DIR}/bin/mamba install -n ${CELLORACLE_ENV} -c conda-forge \
       scipy \
       pandas \
-      matplotlib \
-      seaborn \
       scikit-learn \
-      h5py \
-      pyarrow \
-      tqdm \
-      joblib
+      joblib \
+      tqdm
 
-# Step F：单细胞 / 降维
+# Step F：HDF / Arrow I/O
+RUN ${CONDA_DIR}/bin/mamba install -n ${CELLORACLE_ENV} -c conda-forge \
+      h5py \
+      pyarrow
+
+# Step G：绑图（matplotlib-base 无 Qt，避免 qt6/pyside6 巨包）
+RUN ${CONDA_DIR}/bin/mamba install -n ${CELLORACLE_ENV} -c conda-forge \
+      matplotlib-base \
+      seaborn-base
+
+# Step H：降维
 RUN ${CONDA_DIR}/bin/mamba install -n ${CELLORACLE_ENV} -c conda-forge \
       python-igraph \
-      umap-learn \
+      umap-learn
+
+# Step I：单细胞栈
+RUN ${CONDA_DIR}/bin/mamba install -n ${CELLORACLE_ENV} -c conda-forge \
       anndata \
       scanpy
 
-# Step G：celloracle（--no-deps，不装 gimmemotifs / velocyto 等可选重依赖）
+# Step J：celloracle wheel
 RUN ${CONDA_DIR}/bin/mamba run -n ${CELLORACLE_ENV} pip install --no-cache-dir --no-build-isolation --no-deps \
       "celloracle==0.18.0"
 
-# Step H：R 侧 RDS → h5ad
+# Step K：R 侧 RDS → h5ad
 RUN R -e "nc <- suppressWarnings(as.integer(Sys.getenv('R_INSTALL_NCPUS', '4'))); \
   if (requireNamespace('BiocManager', quietly=TRUE)) { \
     BiocManager::install('zellkonverter', ask=FALSE, update=FALSE, Ncpus=nc); \
@@ -92,14 +100,16 @@ RUN R -e "nc <- suppressWarnings(as.integer(Sys.getenv('R_INSTALL_NCPUS', '4')))
     BiocManager::install('zellkonverter', ask=FALSE, update=FALSE, Ncpus=nc); \
   }"
 
-# Step I：验收（含 Base GRN 加载，确认无需 gimmemotifs）
+# Step L：验收
 RUN ${CONDA_DIR}/envs/${CELLORACLE_ENV}/bin/python3 -c "\
 import celloracle as co; \
 import scanpy; \
+import matplotlib; \
 base = co.data.load_mouse_scATAC_atlas_base_GRN(force_download=False); \
 print('scRNA-perturbation-oracle OK:', \
       'scanpy', scanpy.__version__, \
       'celloracle', co.__version__, \
+      'matplotlib', matplotlib.__version__, \
       'base_grn_rows', len(base))\
 " \
  && R -e "suppressPackageStartupMessages({library(Seurat); library(zellkonverter)}); cat('R interop OK\n')" \

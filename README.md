@@ -36,11 +36,14 @@ CellOracle 安装在独立 conda 环境 `celloracle_env`（Python 3.12，基于 
 | B | Miniforge 安装与 channel 配置 |
 | C | `mamba create` python=3.12 环境 |
 | D | louvain / cython / numpy / numba |
-| E | scipy / pandas / matplotlib 等 |
-| F | scanpy / anndata / umap-learn 等 |
-| G | pip celloracle --no-deps |
-| H | R zellkonverter |
-| I | 导入 + Base GRN 加载验证 |
+| E | scipy / pandas / scikit-learn / joblib / tqdm |
+| F | h5py / pyarrow |
+| G | matplotlib-base / seaborn-base（无 Qt6） |
+| H | python-igraph / umap-learn |
+| I | anndata / scanpy |
+| J | pip celloracle --no-deps |
+| K | R zellkonverter |
+| L | 导入 + Base GRN 加载验证 |
 
 ## 主要 Python 包
 
