@@ -20,7 +20,7 @@ CellOracle 虚拟敲除 / 过表达 Galaxy 工具专用镜像（Phase 2）。
 
 CellOracle 安装在独立 conda 环境 `celloracle_env`（Python 3.12，基于 **Miniforge**）：
 
-- **不安装 gimmemotifs 的 pip 源码包**；改用 bioconda 预编译 `gimmemotifs`（celloracle 导入必需，单独 RUN 层）
+- 使用 bioconda **`gimmemotifs-minimal`**（非完整 `gimmemotifs`，避免 homer/ghostscript/meme 导致 Step 25 超时）
 - 另装 `genomepy`（conda-forge）、`goatools` / `velocyto`（pip）
 - 使用 Miniforge 而非 Miniconda，避免 Docker 非交互构建时 `CondaToSNonInteractiveError`
 - **Dockerfile 拆分为多个 RUN 层**，平台超时重试时可复用已完成层
@@ -42,7 +42,7 @@ CellOracle 安装在独立 conda 环境 `celloracle_env`（Python 3.12，基于 
 | G | matplotlib-base / seaborn-base（无 Qt6） |
 | H | python-igraph / umap-learn |
 | I | anndata / scanpy |
-| J | gimmemotifs（bioconda，单独一层） |
+| J | gimmemotifs-minimal（bioconda，轻量） |
 | K | genomepy |
 | L | pip goatools |
 | M | pip velocyto |

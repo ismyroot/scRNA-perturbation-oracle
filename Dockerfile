@@ -4,8 +4,8 @@
 # 另建 conda 环境 celloracle_env（Python 3.12）安装 CellOracle 栈。
 #
 # 说明：
-# - celloracle 导入链硬依赖 gimmemotifs / genomepy / goatools / velocyto（即使仅用内置 Base GRN）。
-# - gimmemotifs 必须走 bioconda 预编译包（不可 pip 源码）；单独一层便于超时重试缓存。
+# - celloracle 导入链硬依赖 gimmemotifs-minimal / genomepy / goatools / velocyto。
+# - 使用 gimmemotifs-minimal（非完整 gimmemotifs），避免 homer/ghostscript/meme 导致构建超时。
 # - 每个 mamba/pip 安装单独 RUN，便于平台 ~10min 超时重试时复用缓存层。
 
 ARG INTEROP_IMAGE=quay.io/1733295510/scrna-interop:V2.5.2
@@ -88,9 +88,9 @@ RUN ${CONDA_DIR}/bin/mamba install -n ${CELLORACLE_ENV} -c conda-forge \
       anndata \
       scanpy
 
-# Step J：gimmemotifs（celloracle motif_analysis 导入硬依赖；bioconda 单独一层）
+# Step J：gimmemotifs-minimal（celloracle 导入 Scanner/Fasta；勿装完整 gimmemotifs，会拉 homer/ghostscript/meme 导致超时）
 RUN ${CONDA_DIR}/bin/mamba install -n ${CELLORACLE_ENV} -c conda-forge -c bioconda \
-      gimmemotifs
+      gimmemotifs-minimal
 
 # Step K：genomepy
 RUN ${CONDA_DIR}/bin/mamba install -n ${CELLORACLE_ENV} -c conda-forge \
