@@ -104,6 +104,10 @@ RUN ${CONDA_DIR}/bin/mamba run -n ${CELLORACLE_ENV} pip install --no-cache-dir -
 RUN ${CONDA_DIR}/bin/mamba run -n ${CELLORACLE_ENV} pip install --no-cache-dir --no-build-isolation --no-deps \
       "git+https://github.com/morris-lab/CellOracle.git@aad70bd"
 
+# Step M2：celloracle 导入链依赖（git --no-deps 不会装 requirements.txt 中的 jupyter/IPython）
+RUN ${CONDA_DIR}/bin/mamba run -n ${CELLORACLE_ENV} pip install --no-cache-dir --no-build-isolation \
+      "ipython" "matplotlib-inline<=0.1.7"
+
 # Step N：R 侧 RDS → h5ad
 RUN R -e "nc <- suppressWarnings(as.integer(Sys.getenv('R_INSTALL_NCPUS', '4'))); \
   if (requireNamespace('BiocManager', quietly=TRUE)) { \
