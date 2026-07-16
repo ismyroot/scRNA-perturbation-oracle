@@ -100,9 +100,9 @@ RUN ${CONDA_DIR}/bin/mamba run -n ${CELLORACLE_ENV} pip install --no-cache-dir -
 RUN ${CONDA_DIR}/bin/mamba run -n ${CELLORACLE_ENV} pip install --no-cache-dir --no-build-isolation \
       "velocyto>=0.17"
 
-# Step M：celloracle + 运行时依赖（同层安装，避免平台漏跑 M2；git --no-deps 不含 IPython）
+# Step M：celloracle + 运行时依赖（同层安装；git --no-deps 不含 jupyter/IPython/ipywidgets）
 RUN ${CONDA_DIR}/bin/mamba run -n ${CELLORACLE_ENV} pip install --no-cache-dir --no-build-isolation \
-      "ipython" "matplotlib-inline<=0.1.7" \
+      "ipython" "matplotlib-inline<=0.1.7" "ipywidgets" \
  && ${CONDA_DIR}/bin/mamba run -n ${CELLORACLE_ENV} pip install --no-cache-dir --no-build-isolation --no-deps \
       "git+https://github.com/morris-lab/CellOracle.git@aad70bd"
 
