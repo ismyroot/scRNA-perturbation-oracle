@@ -6,7 +6,7 @@
 # 说明：
 # - celloracle 导入链硬依赖 gimmemotifs-minimal / genomepy / goatools / velocyto。
 # - 使用 gimmemotifs-minimal（非完整 gimmemotifs），避免 homer/ghostscript/meme 导致构建超时。
-# - 每个 mamba/pip 安装单独 RUN，便于平台 ~10min 超时重试时复用缓存层。
+# - 每个 mamba/pip 安装单独 RUN，便于平台 ~10min 超时重试时复用缓存层。 tag: 1733295510/scRNA-perturbation-oracle:V1.0.0
 
 ARG INTEROP_IMAGE=quay.io/1733295510/scrna-interop:V2.5.2
 FROM ${INTEROP_IMAGE}
