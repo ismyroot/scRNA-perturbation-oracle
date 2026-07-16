@@ -100,13 +100,11 @@ RUN ${CONDA_DIR}/bin/mamba run -n ${CELLORACLE_ENV} pip install --no-cache-dir -
 RUN ${CONDA_DIR}/bin/mamba run -n ${CELLORACLE_ENV} pip install --no-cache-dir --no-build-isolation \
       "velocyto>=0.17"
 
-# Step M：celloracle（GitHub master 含 gimmemotifs>=0.18 default_motifs 兼容层；PyPI 0.18.0 无）
-RUN ${CONDA_DIR}/bin/mamba run -n ${CELLORACLE_ENV} pip install --no-cache-dir --no-build-isolation --no-deps \
-      "git+https://github.com/morris-lab/CellOracle.git@aad70bd"
-
-# Step M2：celloracle 导入链依赖（git --no-deps 不会装 requirements.txt 中的 jupyter/IPython）
+# Step M：celloracle + 运行时依赖（同层安装，避免平台漏跑 M2；git --no-deps 不含 IPython）
 RUN ${CONDA_DIR}/bin/mamba run -n ${CELLORACLE_ENV} pip install --no-cache-dir --no-build-isolation \
-      "ipython" "matplotlib-inline<=0.1.7"
+      "ipython" "matplotlib-inline<=0.1.7" \
+ && ${CONDA_DIR}/bin/mamba run -n ${CELLORACLE_ENV} pip install --no-cache-dir --no-build-isolation --no-deps \
+      "git+https://github.com/morris-lab/CellOracle.git@aad70bd"
 
 # Step N：R 侧 RDS → h5ad
 RUN R -e "nc <- suppressWarnings(as.integer(Sys.getenv('R_INSTALL_NCPUS', '4'))); \
