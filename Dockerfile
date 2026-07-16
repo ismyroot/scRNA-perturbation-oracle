@@ -4,7 +4,8 @@
 # 另建 conda 环境 celloracle_env（Python 3.12）安装 CellOracle 栈。
 #
 # 说明：
-# - gimmemotifs-minimal 先装核心库；再 pip 补全 default_motifs 等 API（避免 conda 完整包拉 homer/meme 超时）。
+# - gimmemotifs-minimal 0.18（bioconda）；gimmemotifs 0.18 已移除 default_motifs API。
+# - PyPI celloracle 0.18.0 仍硬依赖 default_motifs，故从 GitHub 安装含兼容 shim 的版本。
 # - 每个 mamba/pip 安装单独 RUN，便于平台超时重试时复用缓存层。
 
 ARG INTEROP_IMAGE=quay.io/1733295510/scrna-interop:V2.5.2
@@ -91,10 +92,6 @@ RUN ${CONDA_DIR}/bin/mamba install -n ${CELLORACLE_ENV} -c conda-forge \
 RUN ${CONDA_DIR}/bin/mamba install -n ${CELLORACLE_ENV} -c conda-forge -c bioconda \
       gimmemotifs-minimal
 
-# Step J2：pip 补全 gimmemotifs（minimal 缺少 default_motifs，celloracle tfinfo_core 需要）
-RUN ${CONDA_DIR}/bin/mamba run -n ${CELLORACLE_ENV} pip install --no-cache-dir --no-build-isolation --upgrade \
-      "gimmemotifs==0.18.4"
-
 # Step K：goatools
 RUN ${CONDA_DIR}/bin/mamba run -n ${CELLORACLE_ENV} pip install --no-cache-dir --no-build-isolation \
       "goatools"
@@ -103,9 +100,9 @@ RUN ${CONDA_DIR}/bin/mamba run -n ${CELLORACLE_ENV} pip install --no-cache-dir -
 RUN ${CONDA_DIR}/bin/mamba run -n ${CELLORACLE_ENV} pip install --no-cache-dir --no-build-isolation \
       "velocyto>=0.17"
 
-# Step M：celloracle wheel
+# Step M：celloracle（GitHub master 含 gimmemotifs>=0.18 default_motifs 兼容层；PyPI 0.18.0 无）
 RUN ${CONDA_DIR}/bin/mamba run -n ${CELLORACLE_ENV} pip install --no-cache-dir --no-build-isolation --no-deps \
-      "celloracle==0.18.0"
+      "git+https://github.com/morris-lab/CellOracle.git@aad70bd"
 
 # Step N：R 侧 RDS → h5ad
 RUN R -e "nc <- suppressWarnings(as.integer(Sys.getenv('R_INSTALL_NCPUS', '4'))); \
@@ -118,7 +115,6 @@ RUN R -e "nc <- suppressWarnings(as.integer(Sys.getenv('R_INSTALL_NCPUS', '4')))
 
 # Step O：验收
 RUN ${CONDA_DIR}/envs/${CELLORACLE_ENV}/bin/python3 -c "\
-from gimmemotifs.motif import default_motifs; \
 import celloracle as co; \
 import scanpy; \
 import matplotlib; \
