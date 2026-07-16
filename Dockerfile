@@ -4,9 +4,8 @@
 # 另建 conda 环境 celloracle_env（Python 3.12）安装 CellOracle 栈。
 #
 # 说明：
-# - celloracle 导入链硬依赖 gimmemotifs-minimal / genomepy / goatools / velocyto。
-# - 使用 gimmemotifs-minimal（非完整 gimmemotifs），避免 homer/ghostscript/meme 导致构建超时。
-# - 每个 mamba/pip 安装单独 RUN，便于平台 ~10min 超时重试时复用缓存层。 tag: 1733295510/scRNA-perturbation-oracle:V1.0.0
+# - gimmemotifs-minimal 先装核心库；再 pip 补全 default_motifs 等 API（避免 conda 完整包拉 homer/meme 超时）。
+# - 每个 mamba/pip 安装单独 RUN，便于平台超时重试时复用缓存层。
 
 ARG INTEROP_IMAGE=quay.io/1733295510/scrna-interop:V2.5.2
 FROM ${INTEROP_IMAGE}
@@ -88,27 +87,27 @@ RUN ${CONDA_DIR}/bin/mamba install -n ${CELLORACLE_ENV} -c conda-forge \
       anndata \
       scanpy
 
-# Step J：gimmemotifs-minimal（celloracle 导入 Scanner/Fasta；勿装完整 gimmemotifs，会拉 homer/ghostscript/meme 导致超时）
+# Step J：gimmemotifs-minimal（bioconda 核心库，已含 genomepy）
 RUN ${CONDA_DIR}/bin/mamba install -n ${CELLORACLE_ENV} -c conda-forge -c bioconda \
       gimmemotifs-minimal
 
-# Step K：genomepy
-RUN ${CONDA_DIR}/bin/mamba install -n ${CELLORACLE_ENV} -c conda-forge \
-      genomepy
+# Step J2：pip 补全 gimmemotifs（minimal 缺少 default_motifs，celloracle tfinfo_core 需要）
+RUN ${CONDA_DIR}/bin/mamba run -n ${CELLORACLE_ENV} pip install --no-cache-dir --no-build-isolation --upgrade \
+      "gimmemotifs==0.18.4"
 
-# Step L：goatools
+# Step K：goatools
 RUN ${CONDA_DIR}/bin/mamba run -n ${CELLORACLE_ENV} pip install --no-cache-dir --no-build-isolation \
       "goatools"
 
-# Step M：velocyto
+# Step L：velocyto
 RUN ${CONDA_DIR}/bin/mamba run -n ${CELLORACLE_ENV} pip install --no-cache-dir --no-build-isolation \
       "velocyto>=0.17"
 
-# Step N：celloracle wheel
+# Step M：celloracle wheel
 RUN ${CONDA_DIR}/bin/mamba run -n ${CELLORACLE_ENV} pip install --no-cache-dir --no-build-isolation --no-deps \
       "celloracle==0.18.0"
 
-# Step O：R 侧 RDS → h5ad
+# Step N：R 侧 RDS → h5ad
 RUN R -e "nc <- suppressWarnings(as.integer(Sys.getenv('R_INSTALL_NCPUS', '4'))); \
   if (requireNamespace('BiocManager', quietly=TRUE)) { \
     BiocManager::install('zellkonverter', ask=FALSE, update=FALSE, Ncpus=nc); \
@@ -117,8 +116,9 @@ RUN R -e "nc <- suppressWarnings(as.integer(Sys.getenv('R_INSTALL_NCPUS', '4')))
     BiocManager::install('zellkonverter', ask=FALSE, update=FALSE, Ncpus=nc); \
   }"
 
-# Step P：验收
+# Step O：验收
 RUN ${CONDA_DIR}/envs/${CELLORACLE_ENV}/bin/python3 -c "\
+from gimmemotifs.motif import default_motifs; \
 import celloracle as co; \
 import scanpy; \
 import matplotlib; \
