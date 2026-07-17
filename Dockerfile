@@ -1,133 +1,46 @@
-# scRNA-perturbation-oracle V1.0.0：CellOracle 虚拟敲除 / 过表达（Phase 2，Python + R 互操作）。
+# scRNA-perturbation-oracle V1.17：基于已验证 V1.16 叠加 Quarto Python kernel 依赖。
 #
-# 基于 quay.io/1733295510/scrna-interop:V2.5.2（R + /opt/venv anndata + Quarto），
-# 另建 conda 环境 celloracle_env（Python 3.12）安装 CellOracle 栈。
+# V1.16 已包含 CellOracle 全栈（FROM scrna-interop 全量构建，见 git tag V1.16）。
+# 本层修复 Galaxy 工具 quarto render 报错：
+#   ModuleNotFoundError: No module named 'nbformat'
+#   Jupyter is not available in this Python installation.
 #
-# 说明：
-# - gimmemotifs-minimal 0.18（bioconda）；gimmemotifs 0.18 已移除 default_motifs API。
-# - PyPI celloracle 0.18.0 仍硬依赖 default_motifs，故从 GitHub 安装含兼容 shim 的版本。
-# - 每个 mamba/pip 安装单独 RUN，便于平台超时重试时复用缓存层。
+# 构建：
+#   docker build -t quay.io/1733295510/scrna-perturbation-oracle:V1.17 .
+#   docker push quay.io/1733295510/scrna-perturbation-oracle:V1.17
 
-ARG INTEROP_IMAGE=quay.io/1733295510/scrna-interop:V2.5.2
-FROM ${INTEROP_IMAGE}
+ARG BASE_IMAGE=quay.io/1733295510/scrna-perturbation-oracle:V1.16
+FROM ${BASE_IMAGE}
 
 LABEL maintainer="1733295510 <1733295510@qq.com>"
 LABEL org.opencontainers.image.title="scRNA-perturbation-oracle"
-LABEL org.opencontainers.image.description="CellOracle virtual KO/OE on scrna-interop (Seurat RDS + Python GRN simulation)."
+LABEL org.opencontainers.image.description="CellOracle virtual KO/OE on V1.16 + Quarto Python Jupyter stack."
 
-ENV DEBIAN_FRONTEND=noninteractive
-ENV LANG=C.UTF-8
-ENV LC_ALL=C.UTF-8
-ENV RETICULATE_PYTHON=/opt/venv/bin/python3
-ENV MPLBACKEND=Agg
-ENV CONDA_DIR=/opt/miniconda
-ENV CELLORACLE_ENV=celloracle_env
-ENV PATH=${CONDA_DIR}/bin:${PATH}
-ENV QUARTO_PYTHON=${CONDA_DIR}/envs/${CELLORACLE_ENV}/bin/python3
+ENV QUARTO_PYTHON=/opt/miniconda/envs/celloracle_env/bin/python3
 
 USER root
 
-# Step A：系统依赖
-RUN apt-get update \
- && apt-get install -y --no-install-recommends \
-    bedtools \
-    cmake \
-    wget \
-    git \
-    libxml2-dev \
-    libxslt1-dev \
-    zlib1g-dev \
-    libffi-dev \
-    libssl-dev \
- && rm -rf /var/lib/apt/lists/*
+# Step P：Quarto 执行 engine: python qmd 所需 Jupyter 最小栈
+RUN /opt/miniconda/bin/mamba install -n celloracle_env -c conda-forge -y \
+      nbformat \
+      nbclient \
+      ipykernel \
+      jupyter_client \
+      jupyter_core \
+ && /opt/miniconda/bin/mamba clean -afy
 
-# Step B：Miniforge
-RUN wget -q https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh -O /tmp/miniforge.sh \
- && bash /tmp/miniforge.sh -b -p ${CONDA_DIR} \
- && rm /tmp/miniforge.sh \
- && ${CONDA_DIR}/bin/conda config --set always_yes yes --set changeps1 no \
- && ${CONDA_DIR}/bin/conda config --set channel_priority flexible \
- && ${CONDA_DIR}/bin/conda config --add channels conda-forge \
- && ${CONDA_DIR}/bin/conda config --add channels bioconda
-
-# Step C：Python 环境
-RUN ${CONDA_DIR}/bin/mamba create -n ${CELLORACLE_ENV} python=3.12
-
-# Step D：图算法 / 编译依赖
-RUN ${CONDA_DIR}/bin/mamba install -n ${CELLORACLE_ENV} -c conda-forge -c bioconda \
-      louvain \
-      cython \
-      numpy \
-      numba
-
-# Step E：数值与机器学习基础
-RUN ${CONDA_DIR}/bin/mamba install -n ${CELLORACLE_ENV} -c conda-forge \
-      scipy \
-      pandas \
-      scikit-learn \
-      joblib \
-      tqdm
-
-# Step F：HDF / Arrow I/O
-RUN ${CONDA_DIR}/bin/mamba install -n ${CELLORACLE_ENV} -c conda-forge \
-      h5py \
-      pyarrow
-
-# Step G：绑图（matplotlib-base 无 Qt）
-RUN ${CONDA_DIR}/bin/mamba install -n ${CELLORACLE_ENV} -c conda-forge \
-      matplotlib-base \
-      seaborn-base
-
-# Step H：降维
-RUN ${CONDA_DIR}/bin/mamba install -n ${CELLORACLE_ENV} -c conda-forge \
-      python-igraph \
-      umap-learn
-
-# Step I：单细胞栈
-RUN ${CONDA_DIR}/bin/mamba install -n ${CELLORACLE_ENV} -c conda-forge \
-      anndata \
-      scanpy
-
-# Step J：gimmemotifs-minimal（bioconda 核心库，已含 genomepy）
-RUN ${CONDA_DIR}/bin/mamba install -n ${CELLORACLE_ENV} -c conda-forge -c bioconda \
-      gimmemotifs-minimal
-
-# Step K：goatools
-RUN ${CONDA_DIR}/bin/mamba run -n ${CELLORACLE_ENV} pip install --no-cache-dir --no-build-isolation \
-      "goatools"
-
-# Step L：velocyto
-RUN ${CONDA_DIR}/bin/mamba run -n ${CELLORACLE_ENV} pip install --no-cache-dir --no-build-isolation \
-      "velocyto>=0.17"
-
-# Step M：celloracle + 运行时依赖（同层安装；git --no-deps 不含 jupyter/IPython/ipywidgets）
-RUN ${CONDA_DIR}/bin/mamba run -n ${CELLORACLE_ENV} pip install --no-cache-dir --no-build-isolation \
-      "ipython" "matplotlib-inline<=0.1.7" "ipywidgets" \
- && ${CONDA_DIR}/bin/mamba run -n ${CELLORACLE_ENV} pip install --no-cache-dir --no-build-isolation --no-deps \
-      "git+https://github.com/morris-lab/CellOracle.git@aad70bd"
-
-# Step N：R 侧 RDS → h5ad
-RUN R -e "nc <- suppressWarnings(as.integer(Sys.getenv('R_INSTALL_NCPUS', '4'))); \
-  if (requireNamespace('BiocManager', quietly=TRUE)) { \
-    BiocManager::install('zellkonverter', ask=FALSE, update=FALSE, Ncpus=nc); \
-  } else { \
-    install.packages('BiocManager', repos='https://cloud.r-project.org'); \
-    BiocManager::install('zellkonverter', ask=FALSE, update=FALSE, Ncpus=nc); \
-  }"
-
-# Step O：验收
-RUN ${CONDA_DIR}/envs/${CELLORACLE_ENV}/bin/python3 -c "\
-import celloracle as co; \
-import scanpy; \
-import matplotlib; \
-base = co.data.load_mouse_scATAC_atlas_base_GRN(force_download=False); \
-print('scRNA-perturbation-oracle OK:', \
-      'scanpy', scanpy.__version__, \
-      'celloracle', co.__version__, \
-      'matplotlib', matplotlib.__version__, \
-      'base_grn_rows', len(base))\
+# Step Q：验收（CellOracle 已在 V1.16 验证；此处确认 Quarto 可启动 Python kernel）
+RUN /opt/miniconda/envs/celloracle_env/bin/python3 -c "\
+import nbformat; \
+import nbclient; \
+import ipykernel; \
+import jupyter_client; \
+print('jupyter stack OK', 'nbformat', nbformat.__version__, 'nbclient', nbclient.__version__)\
 " \
- && R -e "suppressPackageStartupMessages({library(Seurat); library(zellkonverter)}); cat('R interop OK\n')" \
- && quarto --version | head -1
+ && quarto check jupyter 2>&1 | tee /tmp/quarto-jupyter-check.txt \
+ && grep -q "Checking Python 3 installation" /tmp/quarto-jupyter-check.txt \
+ && ! grep -q "Jupyter: (None)" /tmp/quarto-jupyter-check.txt \
+ && grep -q "Checking Jupyter engine render" /tmp/quarto-jupyter-check.txt \
+ && grep -q "\[✓\] Checking Jupyter engine render" /tmp/quarto-jupyter-check.txt
 
 WORKDIR /work
