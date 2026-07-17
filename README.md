@@ -73,6 +73,13 @@ docker push quay.io/1733295510/scrna-perturbation-oracle:V1.0.0
 docker tag quay.io/1733295510/scrna-perturbation-oracle:V1.0.0 \
   genaibase-cn-beijing.cr.volces.com/genaibase/scrna-perturbation-oracle:v1
 docker push genaibase-cn-beijing.cr.volces.com/genaibase/scrna-perturbation-oracle:v1
+
+# V1.19（2026-07-17）：叠加 scikit-misc，修复 scanpy seurat_v3 HVG 缺 skmisc
+docker build -t quay.io/1733295510/scrna-perturbation-oracle:V1.19 .
+docker push quay.io/1733295510/scrna-perturbation-oracle:V1.19
+docker tag quay.io/1733295510/scrna-perturbation-oracle:V1.19 \
+  genaibase-cn-beijing.cr.volces.com/genaibase/scrna-perturbation-oracle:v1
+docker push genaibase-cn-beijing.cr.volces.com/genaibase/scrna-perturbation-oracle:v1
 ```
 
 ## 注意事项
